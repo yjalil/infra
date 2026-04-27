@@ -1,0 +1,126 @@
+services:
+  authentik-provisioner:
+    image: ${POSTGRES_IMAGE}:${POSTGRES_IMAGE_TAG}
+    container_name: authentik-provisioner
+    restart: "no"
+    command: |
+      sh -c "
+        until pg_isready -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER}; do
+          echo 'Waiting for PostgreSQL...';
+          sleep 2;
+        done;
+        psql postgresql://${POSTGRES_SUPER_USER}:${POSTGRES_SUPER_PASSWORD}@${POSTGRES_HOST}:5432/postgres <<-EOSQL
+          SELECT 'CREATE USER ${POSTGRES_AUTHENTIK_USER} WITH PASSWORD ''${POSTGRES_AUTHENTIK_PASSWORD}'''
+          WHERE NOT EXISTS (SELECT FROM pg_user WHERE usename = '${POSTGRES_AUTHENTIK_USER}')\gexec
+
+          SELECT 'CREATE DATABASE ${POSTGRES_AUTHENTIK_DB} OWNER ${POSTGRES_AUTHENTIK_USER}'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${POSTGRES_AUTHENTIK_DB}')\gexec
+        EOSQL
+        echo 'Authentik DB provisioning complete';
+      "
+    networks:
+      - ${NETWORK_DATA}
+
+  server:
+    image: ${AUTHENTIK_IMAGE}:${AUTHENTIK_TAG}
+    container_name: ${AUTHENTIK_SERVER_HOST}
+    command: server
+    restart: unless-stopped
+    depends_on:
+      authentik-provisioner:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "ak healthcheck"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    deploy:
+      resources:
+        limits:
+          memory: ${AUTHENTIK_SERVER_MEMORY_LIMIT}
+          cpus: ${AUTHENTIK_SERVER_CPU_LIMIT}
+        reservations:
+          memory: ${AUTHENTIK_SERVER_MEMORY_RESERVATION}
+          cpus: ${AUTHENTIK_SERVER_CPU_RESERVATION}
+    environment:
+      AUTHENTIK_REDIS__HOST: ${REDIS_HOST}
+      AUTHENTIK_REDIS__PASSWORD: ${REDIS_PASSWORD}
+      AUTHENTIK_POSTGRESQL__HOST: ${POSTGRES_HOST}
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_AUTHENTIK_USER}
+      AUTHENTIK_POSTGRESQL__NAME: ${POSTGRES_AUTHENTIK_DB}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_AUTHENTIK_PASSWORD}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_HOST: ${AUTHENTIK_HOST}
+      AUTHENTIK_EMAIL__HOST: ${AUTHENTIK_EMAIL__HOST}
+      AUTHENTIK_EMAIL__PORT: ${AUTHENTIK_EMAIL__PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${AUTHENTIK_EMAIL__USERNAME}
+      AUTHENTIK_EMAIL__PASSWORD: ${AUTHENTIK_EMAIL__PASSWORD}
+      AUTHENTIK_EMAIL__USE_TLS: ${AUTHENTIK_EMAIL__USE_TLS}
+      AUTHENTIK_EMAIL__USE_SSL: ${AUTHENTIK_EMAIL__USE_SSL}
+      AUTHENTIK_EMAIL__FROM: ${AUTHENTIK_EMAIL__FROM}
+    volumes:
+      - ./media:/data/media
+      - ./templates:/templates
+    networks:
+      - ${NETWORK_INTERNAL}
+      - ${NETWORK_DATA}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.rule=Host(`${AUTHENTIK_DOMAIN}`)"
+      - "traefik.http.routers.authentik.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.authentik.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.services.authentik.loadbalancer.server.port=${AUTHENTIK_PORT}"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+
+  worker:
+    image: ${AUTHENTIK_IMAGE}:${AUTHENTIK_TAG}
+    container_name: ${AUTHENTIK_WORKER_HOST}
+    command: worker
+    restart: unless-stopped
+    user: root
+    depends_on:
+      authentik-provisioner:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "ak healthcheck"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    deploy:
+      resources:
+        limits:
+          memory: ${AUTHENTIK_WORKER_MEMORY_LIMIT}
+          cpus: ${AUTHENTIK_WORKER_CPU_LIMIT}
+        reservations:
+          memory: ${AUTHENTIK_WORKER_MEMORY_RESERVATION}
+          cpus: ${AUTHENTIK_WORKER_CPU_RESERVATION}
+    environment:
+      AUTHENTIK_REDIS__HOST: ${REDIS_HOST}
+      AUTHENTIK_REDIS__PASSWORD: ${REDIS_PASSWORD}
+      AUTHENTIK_POSTGRESQL__HOST: ${POSTGRES_HOST}
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_AUTHENTIK_USER}
+      AUTHENTIK_POSTGRESQL__NAME: ${POSTGRES_AUTHENTIK_DB}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_AUTHENTIK_PASSWORD}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_EMAIL__HOST: ${AUTHENTIK_EMAIL__HOST}
+      AUTHENTIK_EMAIL__PORT: ${AUTHENTIK_EMAIL__PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${AUTHENTIK_EMAIL__USERNAME}
+      AUTHENTIK_EMAIL__PASSWORD: ${AUTHENTIK_EMAIL__PASSWORD}
+      AUTHENTIK_EMAIL__USE_TLS: ${AUTHENTIK_EMAIL__USE_TLS}
+      AUTHENTIK_EMAIL__USE_SSL: ${AUTHENTIK_EMAIL__USE_SSL}
+      AUTHENTIK_EMAIL__FROM: ${AUTHENTIK_EMAIL__FROM}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./media:/data/media
+      - ./certs:/certs
+      - ./templates:/templates
+    networks:
+      - ${NETWORK_DATA}
+
+networks:
+  ${NETWORK_INTERNAL}:
+    external: true
+  ${NETWORK_DATA}:
+    external: true

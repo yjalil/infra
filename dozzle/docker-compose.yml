@@ -1,0 +1,32 @@
+services:
+  dozzle:
+    image: ${DOZZLE_IMAGE}:${DOZZLE_TAG}
+    container_name: ${DOZZLE_HOST}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${DOZZLE_MEMORY_LIMIT}
+          cpus: ${DOZZLE_CPU_LIMIT}
+        reservations:
+          memory: ${DOZZLE_MEMORY_RESERVATION}
+          cpus: ${DOZZLE_CPU_RESERVATION}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DOZZLE_LEVEL: ${DOZZLE_LEVEL}
+      DOZZLE_FILTER: ${DOZZLE_FILTER}
+    networks:
+      - ${NETWORK_INTERNAL}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dozzle.rule=Host(`${DOZZLE_DOMAIN}`)"
+      - "traefik.http.routers.dozzle.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.dozzle.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.services.dozzle.loadbalancer.server.port=${DOZZLE_PORT}"
+      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.http.routers.dozzle.middlewares=authentik@file"
+
+networks:
+  ${NETWORK_INTERNAL}:
+    external: true

@@ -1,0 +1,36 @@
+services:
+  postgres-backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    image: ${REGISTRY_DOMAIN}/postgres-backup:${POSTGRES_BACKUP_IMAGE_TAG}
+    container_name: postgres-backup
+    restart: unless-stopped
+    user: postgres:postgres
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_USER: ${POSTGRES_SUPER_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
+      POSTGRES_CLUSTER: "TRUE"
+      POSTGRES_EXTRA_OPTS: ""
+      SCHEDULE: ${BACKUP_SCHEDULE}
+      BACKUP_ON_START: "TRUE"
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS}
+      BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS}
+      BACKUP_KEEP_MONTHS: ${BACKUP_KEEP_MONTHS}
+      TZ: ${TZ}
+      WEBHOOK_POST_BACKUP_URL: ${BACKUP_WEBHOOK_SUCCESS_URL}
+      WEBHOOK_ERROR_URL: ${BACKUP_WEBHOOK_ERROR_URL}
+    volumes:
+      - ${BACKUP_PATH}:/backups
+      - ./hooks:/hooks
+      - ./rclone:/etc/rclone:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ${NETWORK_DATA}
+
+networks:
+  ${NETWORK_DATA}:
+    external: true

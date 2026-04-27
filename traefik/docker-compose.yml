@@ -1,0 +1,25 @@
+services:
+  traefik:
+    image: ${TRAEFIK_IMAGE}:${TRAEFIK_IMAGE_TAG}
+    container_name: ${TRAEFIK_HOST}
+    restart: always
+    networks:
+      - internal 
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/dynamic:/etc/traefik/dynamic
+      - ./data/traefik.yml:/traefik.yml:ro
+      - ./data/acme.json:/acme.json
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_DOMAIN}`)"
+      - "traefik.http.routers.dashboard.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.dashboard.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.routers.dashboard.service=api@internal"
+
+networks:
+  internal:
+    external: true

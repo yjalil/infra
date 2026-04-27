@@ -1,0 +1,5 @@
+# Mount the NFS share at OS level before deploying
+# echo "${NFS_HOST}:${NFS_PATH} ${BACKUP_PATH} nfs defaults 0 0" >> /etc/fstab
+# mount -a
+# Then set BACKUP_PATH to the mount point in .env
+# rclone is not needed for NFS — it's transparent to the backup container

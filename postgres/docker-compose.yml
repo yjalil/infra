@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE}:${POSTGRES_IMAGE_TAG}
+    container_name: ${POSTGRES_HOST}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPER_USER}"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT}
+          cpus: ${POSTGRES_CPU_LIMIT}
+        reservations:
+          memory: ${POSTGRES_MEMORY_RESERVATION}
+          cpus: ${POSTGRES_CPU_RESERVATION}
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPER_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
+    volumes:
+      - ./data:/var/lib/postgresql
+    networks:
+      - ${NETWORK_DATA}
+
+networks:
+  ${NETWORK_DATA}:
+    external: true

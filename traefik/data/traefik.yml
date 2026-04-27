@@ -1,0 +1,33 @@
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: ${TRAEFIK_ENTRYPOINT}
+          scheme: https
+  ${TRAEFIK_ENTRYPOINT}:
+    address: ":443"
+    http:
+      tls:
+        certResolver: ${TRAEFIK_CERTRESOLVER}
+
+certificatesResolvers:
+  ${TRAEFIK_CERTRESOLVER}:
+    acme:
+      email: ${ACME_EMAIL}
+      storage: /acme.json
+      httpChallenge:
+        entryPoint: web
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: ${TRAEFIK_NETWORK}
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+log:
+  level: ${TRAEFIK_LOG_LEVEL}

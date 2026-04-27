@@ -1,0 +1,6 @@
+[sftp]
+type = sftp
+host = ${BACKUP_SFTP_HOST}
+user = ${BACKUP_SFTP_USER}
+key_file = /etc/rclone/id_rsa
+port = 22

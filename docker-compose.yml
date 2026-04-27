@@ -1,0 +1,6 @@
+include:
+  - postgres/docker-compose.yml
+  - redis/docker-compose.yml
+  - traefik/docker-compose.yml
+  - authentik/docker-compose.yml
+  - dozzle/docker-compose.yml

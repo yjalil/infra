@@ -1,0 +1,34 @@
+services:
+  redis:
+    image: ${REDIS_IMAGE}:${REDIS_IMAGE_TAG}
+    container_name: ${REDIS_HOST}
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --save 60 1000
+      --save 300 100
+      --save 900 1
+      --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT}
+          cpus: ${REDIS_CPU_LIMIT}
+        reservations:
+          memory: ${REDIS_MEMORY_RESERVATION}
+          cpus: ${REDIS_CPU_RESERVATION}
+    volumes:
+      - ./data:/data
+    networks:
+      - ${NETWORK_DATA}
+
+networks:
+  ${NETWORK_DATA}:
+    external: true
