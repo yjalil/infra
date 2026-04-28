@@ -13,8 +13,20 @@ services:
           sleep 2;
         done;
         [ $$RETRIES -eq 0 ] && echo Postgres not ready, aborting && exit 1;
-        psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -c \"CREATE USER IF NOT EXISTS ${POSTGRES_AUTHENTIK_USER} WITH PASSWORD '${POSTGRES_AUTHENTIK_PASSWORD}'\";
-        psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='${POSTGRES_AUTHENTIK_DB}'\" | grep -q 1 || psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -c \"CREATE DATABASE ${POSTGRES_AUTHENTIK_DB} OWNER ${POSTGRES_AUTHENTIK_USER}\";
+        psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -c \"
+          DO \$\$
+          BEGIN
+            CREATE ROLE ${POSTGRES_AUTHENTIK_USER} WITH LOGIN PASSWORD '${POSTGRES_AUTHENTIK_PASSWORD}';
+          EXCEPTION WHEN duplicate_object THEN
+            RAISE NOTICE 'role ${POSTGRES_AUTHENTIK_USER} already exists, skipping';
+          END
+          \$\$;
+        \";
+        psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -tc \
+          \"SELECT 1 FROM pg_database WHERE datname='${POSTGRES_AUTHENTIK_DB}'\" \
+          | grep -q 1 || \
+        psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -c \
+          \"CREATE DATABASE ${POSTGRES_AUTHENTIK_DB} OWNER ${POSTGRES_AUTHENTIK_USER}\";
         echo Authentik DB provisioning complete;
       "
     networks:
