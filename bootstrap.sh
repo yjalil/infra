@@ -83,7 +83,7 @@ fi
 # ─── Backup directory ─────────────────────────────────────
 section "Backup setup"
 mkdir -p "$BACKUP_PATH"
-chown -R 999:999 "$BACKUP_PATH"
+docker run --rm -v "$(pwd)/${BACKUP_PATH}:/backups" --entrypoint sh postgres:alpine -c "chown -R 999:999 /backups"
 info "Backup directory ready at $BACKUP_PATH"
 
 # ─── Build custom images ──────────────────────────────────
