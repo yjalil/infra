@@ -6,3 +6,9 @@ include:
   - dozzle/docker-compose.yml
   - backup/docker-compose.yml
   - registry/docker-compose.yml
+
+networks:
+  ${NETWORK_INTERNAL}:
+    external: true
+  ${NETWORK_DATA}:
+    external: true
