@@ -2,33 +2,20 @@ services:
   authentik-provisioner:
     image: ${POSTGRES_IMAGE}:${POSTGRES_IMAGE_TAG}
     restart: "no"
-    command: |
+    environment:
+      PGPASSWORD: ${POSTGRES_SUPER_PASSWORD}
+    command: >
       sh -c "
-        RETRIES=30
+        RETRIES=30;
         until pg_isready -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} || [ $$RETRIES -eq 0 ]; do
-          echo \"Waiting for PostgreSQL... ($$RETRIES retries left)\";
-          RETRIES=$$((RETRIES-1))
+          echo Waiting for PostgreSQL... $$RETRIES retries left;
+          RETRIES=$$((RETRIES-1));
           sleep 2;
         done;
-        [ $$RETRIES -eq 0 ] && echo 'Postgres not ready, aborting' && exit 1;
-
-        psql postgresql://${POSTGRES_SUPER_USER}:${POSTGRES_SUPER_PASSWORD}@${POSTGRES_HOST}:5432/postgres -c \"
-          DO \$$
-          BEGIN
-            IF NOT EXISTS (SELECT FROM pg_user WHERE usename = '${POSTGRES_AUTHENTIK_USER}') THEN
-              CREATE USER ${POSTGRES_AUTHENTIK_USER} WITH PASSWORD '${POSTGRES_AUTHENTIK_PASSWORD}';
-            END IF;
-          END
-          \$$;
-        \"
-
-        psql postgresql://${POSTGRES_SUPER_USER}:${POSTGRES_SUPER_PASSWORD}@${POSTGRES_HOST}:5432/postgres -tc \
-          \"SELECT 1 FROM pg_database WHERE datname = '${POSTGRES_AUTHENTIK_DB}'\" \
-          | grep -q 1 || \
-        psql postgresql://${POSTGRES_SUPER_USER}:${POSTGRES_SUPER_PASSWORD}@${POSTGRES_HOST}:5432/postgres -c \
-          \"CREATE DATABASE ${POSTGRES_AUTHENTIK_DB} OWNER ${POSTGRES_AUTHENTIK_USER}\"
-
-        echo 'Authentik DB provisioning complete';
+        [ $$RETRIES -eq 0 ] && echo Postgres not ready, aborting && exit 1;
+        psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -c \"CREATE USER IF NOT EXISTS ${POSTGRES_AUTHENTIK_USER} WITH PASSWORD '${POSTGRES_AUTHENTIK_PASSWORD}'\";
+        psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname='${POSTGRES_AUTHENTIK_DB}'\" | grep -q 1 || psql -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} -d postgres -c \"CREATE DATABASE ${POSTGRES_AUTHENTIK_DB} OWNER ${POSTGRES_AUTHENTIK_USER}\";
+        echo Authentik DB provisioning complete;
       "
     networks:
       - data-net
