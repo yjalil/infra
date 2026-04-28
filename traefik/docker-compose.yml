@@ -4,7 +4,7 @@ services:
     container_name: ${TRAEFIK_HOST}
     restart: always
     networks:
-      - ${NETWORK_INTERNAL}
+      - internal-net
     ports:
       - "80:80"
       - "443:443"
@@ -26,5 +26,6 @@ services:
       - "traefik.http.routers.dashboard.middlewares=authentik@file"
 
 networks:
-  ${NETWORK_INTERNAL}:
+  internal-net:
+    name: ${NETWORK_INTERNAL}
     external: true

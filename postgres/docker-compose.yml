@@ -23,8 +23,9 @@ services:
     volumes:
       - ./data:/var/lib/postgresql
     networks:
-      - ${NETWORK_DATA}
+      - data-net
 
 networks:
-  ${NETWORK_DATA}:
+  data-net:
+    name: ${NETWORK_DATA}
     external: true

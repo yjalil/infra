@@ -16,8 +16,8 @@ services:
       - ./data:/var/lib/registry
       - ./auth:/auth:ro
     networks:
-      - ${NETWORK_INTERNAL}
-      - ${NETWORK_DATA}
+      - internal-net
+      - data-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.registry.rule=Host(`${REGISTRY_DOMAIN}`)"
@@ -27,7 +27,9 @@ services:
       - "traefik.docker.network=${NETWORK_INTERNAL}"
 
 networks:
-  ${NETWORK_INTERNAL}:
+  internal-net:
+    name: ${NETWORK_INTERNAL}
     external: true
-  ${NETWORK_DATA}:
+  data-net:
+    name: ${NETWORK_DATA}
     external: true

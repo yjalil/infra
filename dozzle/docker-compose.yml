@@ -18,7 +18,7 @@ services:
       DOZZLE_LEVEL: ${DOZZLE_LEVEL}
       DOZZLE_FILTER: ${DOZZLE_FILTER}
     networks:
-      - ${NETWORK_INTERNAL}
+      - internal-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dozzle.rule=Host(`${DOZZLE_DOMAIN}`)"
@@ -29,5 +29,6 @@ services:
       - "traefik.http.routers.dozzle.middlewares=authentik@file"
 
 networks:
-  ${NETWORK_INTERNAL}:
+  internal-net:
+    name: ${NETWORK_INTERNAL}
     external: true

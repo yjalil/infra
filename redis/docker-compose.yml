@@ -27,8 +27,9 @@ services:
     volumes:
       - ./data:/data
     networks:
-      - ${NETWORK_DATA}
+      - data-net
 
 networks:
-  ${NETWORK_DATA}:
+  data-net:
+    name: ${NETWORK_DATA}
     external: true

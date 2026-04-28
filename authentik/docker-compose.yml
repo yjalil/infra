@@ -22,7 +22,7 @@ services:
         echo 'Authentik DB provisioning complete';
       "
     networks:
-      - ${NETWORK_DATA}
+      - data-net
 
   server:
     image: ${AUTHENTIK_IMAGE}:${AUTHENTIK_TAG}
@@ -67,8 +67,8 @@ services:
       - ./media:/data/media
       - ./templates:/templates
     networks:
-      - ${NETWORK_INTERNAL}
-      - ${NETWORK_DATA}
+      - internal-net
+      - data-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.authentik.rule=Host(`${AUTHENTIK_DOMAIN}`)"
@@ -122,11 +122,13 @@ services:
       - ./certs:/certs
       - ./templates:/templates
     networks:
-      - ${NETWORK_INTERNAL}
-      - ${NETWORK_DATA}
+      - internal-net
+      - data-net
 
 networks:
-  ${NETWORK_INTERNAL}:
+  internal-net:
+    name: ${NETWORK_INTERNAL}
     external: true
-  ${NETWORK_DATA}:
+  data-net:
+    name: ${NETWORK_DATA}
     external: true
