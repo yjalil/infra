@@ -1,0 +1,33 @@
+services:
+  registry:
+    image: ${REGISTRY_IMAGE}:${REGISTRY_IMAGE_TAG}
+    container_name: ${REGISTRY_HOST}
+    restart: unless-stopped
+    profiles:
+      - registry
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:${REGISTRY_PORT}
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_STORAGE_DELETE_ENABLED: ${REGISTRY_STORAGE_DELETE_ENABLED}
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+    volumes:
+      - ./data:/var/lib/registry
+      - ./auth:/auth:ro
+    networks:
+      - ${NETWORK_INTERNAL}
+      - ${NETWORK_DATA}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.registry.rule=Host(`${REGISTRY_DOMAIN}`)"
+      - "traefik.http.routers.registry.entrypoints=websecure"
+      - "traefik.http.routers.registry.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.services.registry.loadbalancer.server.port=${REGISTRY_PORT}"
+      - "traefik.docker.network=${NETWORK_INTERNAL}"
+
+networks:
+  ${NETWORK_INTERNAL}:
+    external: true
+  ${NETWORK_DATA}:
+    external: true

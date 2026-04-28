@@ -18,9 +18,10 @@ generate_secret() {
 
 # ─── Prerequisites ────────────────────────────────────────
 section "Checking prerequisites"
-command -v docker &>/dev/null    || error "Docker is not installed."
+command -v docker    &>/dev/null || error "Docker is not installed."
+command -v openssl   &>/dev/null || error "openssl is not installed."
+command -v envsubst  &>/dev/null || error "envsubst is not installed (apt install gettext)."
 docker compose version &>/dev/null || error "Docker Compose plugin is not installed."
-command -v openssl &>/dev/null   || error "openssl is not installed."
 info "Prerequisites OK"
 
 # ─── .env ─────────────────────────────────────────────────
@@ -29,20 +30,19 @@ if [ -f .env ]; then
   warn ".env already exists — skipping generation"
 else
   cp .env.example .env
-
-  # Generate all secrets
   sed -i "s|POSTGRES_SUPER_PASSWORD=changeme|POSTGRES_SUPER_PASSWORD=$(generate_secret)|" .env
   sed -i "s|POSTGRES_AUTHENTIK_PASSWORD=changeme|POSTGRES_AUTHENTIK_PASSWORD=$(generate_secret)|" .env
   sed -i "s|REDIS_PASSWORD=changeme|REDIS_PASSWORD=$(generate_secret)|" .env
   sed -i "s|AUTHENTIK_SECRET_KEY=changeme_min_50_chars|AUTHENTIK_SECRET_KEY=$(generate_secret)|" .env
   sed -i "s|SMTP_PASSWORD=changeme|SMTP_PASSWORD=FILL_ME|" .env
-
   info ".env generated with secrets"
 fi
 
+# Source .env for the rest of the script
+set -a && source .env && set +a
+
 # ─── Networks ─────────────────────────────────────────────
 section "Creating Docker networks"
-source <(grep -E '^NETWORK_' .env)
 for network in "$NETWORK_INTERNAL" "$NETWORK_DATA"; do
   if docker network inspect "$network" &>/dev/null; then
     warn "Network '$network' already exists"
@@ -54,35 +54,57 @@ done
 
 # ─── Traefik ──────────────────────────────────────────────
 section "Traefik setup"
-mkdir -p traefik/data
+mkdir -p traefik/data traefik/data/dynamic
+
 if [ ! -f traefik/data/acme.json ]; then
   touch traefik/data/acme.json
-  chmod 600 traefik/data/acme.json
   info "acme.json created"
 else
-  chmod 600 traefik/data/acme.json
   warn "acme.json already exists"
+fi
+chmod 600 traefik/data/acme.json
+
+# ─── Registry ─────────────────────────────────────────────
+if [ "${REGISTRY_LOCAL:-false}" = "true" ]; then
+  section "Registry setup"
+  command -v htpasswd &>/dev/null || error "htpasswd is not installed (apt install apache2-utils)."
+  mkdir -p registry/auth registry/data
+
+  if [ ! -f registry/auth/htpasswd ]; then
+    [ -z "${REGISTRY_USER:-}" ]     && error "REGISTRY_USER is required when REGISTRY_LOCAL=true"
+    [ -z "${REGISTRY_PASSWORD:-}" ] && error "REGISTRY_PASSWORD is required when REGISTRY_LOCAL=true"
+    htpasswd -Bbn "$REGISTRY_USER" "$REGISTRY_PASSWORD" > registry/auth/htpasswd
+    info "htpasswd generated for user: $REGISTRY_USER"
+  else
+    warn "registry/auth/htpasswd already exists — skipping"
+  fi
 fi
 
 # ─── Backup directory ─────────────────────────────────────
 section "Backup setup"
-source <(grep -E '^BACKUP_PATH' .env)
 mkdir -p "$BACKUP_PATH"
 chown -R 999:999 "$BACKUP_PATH"
 info "Backup directory ready at $BACKUP_PATH"
 
 # ─── Build custom images ──────────────────────────────────
 section "Building custom images"
-source <(grep -E '^POSTGRES_BACKUP_IMAGE' .env)
 docker build -t "${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}" ./backup
 info "postgres-backup image built"
 
+if [ "${REGISTRY_LOCAL:-false}" = "true" ]; then
+  docker push "${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}"
+  info "postgres-backup image pushed to registry"
+fi
+
 # ─── Checklist ────────────────────────────────────────────
 echo -e "\n${GREEN}Bootstrap complete.${NC}\n"
-echo -e "Before running ${YELLOW}./deploy.sh${NC}, make sure to fill in ${YELLOW}.env${NC}:\n"
+echo -e "Before running ${YELLOW}./deploy.sh${NC}, review ${YELLOW}.env${NC} and fill in:\n"
 echo -e "  ${RED}[ ]${NC} DOMAIN"
 echo -e "  ${RED}[ ]${NC} ACME_EMAIL"
 echo -e "  ${RED}[ ]${NC} SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD"
-echo -e "  ${RED}[ ]${NC} BACKUP_PATH          (if not local)"
-echo -e "  ${RED}[ ]${NC} RCLONE_DEST          (if using remote backup)"
-echo -e "  ${RED}[ ]${NC} backup/rclone/rclone.conf (copy from destinations/ example)\n"
+echo -e "  ${RED}[ ]${NC} BACKUP_PATH              (if not local)"
+echo -e "  ${RED}[ ]${NC} RCLONE_DEST              (if using remote backup)"
+echo -e "  ${RED}[ ]${NC} TRAEFIK_DNS_PROVIDER/TOKEN (if using DNS challenge)"
+echo -e "  ${RED}[ ]${NC} backup/rclone/rclone.conf (copy from backup/rclone/ examples)"
+[ "${REGISTRY_LOCAL:-false}" = "true" ] && echo -e "  ${RED}[ ]${NC} REGISTRY_USER / REGISTRY_PASSWORD"
+echo ""

@@ -1,9 +1,6 @@
 services:
   postgres-backup:
-    build:
-      context: ./backup
-      dockerfile: Dockerfile
-    image: ${REGISTRY_DOMAIN}/postgres-backup:${POSTGRES_BACKUP_IMAGE_TAG}
+    image: ${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}
     container_name: postgres-backup
     restart: unless-stopped
     user: postgres:postgres
@@ -23,8 +20,8 @@ services:
       WEBHOOK_ERROR_URL: ${BACKUP_WEBHOOK_ERROR_URL}
     volumes:
       - ${BACKUP_PATH}:/backups
-      - ./hooks:/hooks
-      - ./rclone:/etc/rclone:ro
+      - ./backup/hooks:/hooks
+      - ./backup/rclone:/etc/rclone:ro
     depends_on:
       postgres:
         condition: service_healthy

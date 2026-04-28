@@ -4,22 +4,27 @@ services:
     container_name: ${TRAEFIK_HOST}
     restart: always
     networks:
-      - internal 
+      - ${NETWORK_INTERNAL}
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - AUTHENTIK_SERVER_HOST=${AUTHENTIK_SERVER_HOST}
+      - AUTHENTIK_PORT=${AUTHENTIK_PORT}
+      - TRAEFIK_DNS_TOKEN=${TRAEFIK_DNS_TOKEN}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./data/dynamic:/etc/traefik/dynamic
       - ./data/traefik.yml:/traefik.yml:ro
+      - ./data/dynamic:/etc/traefik/dynamic
       - ./data/acme.json:/acme.json
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_DOMAIN}`)"
-      - "traefik.http.routers.dashboard.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
       - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=authentik@file"
 
 networks:
-  internal:
+  ${NETWORK_INTERNAL}:
     external: true

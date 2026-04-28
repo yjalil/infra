@@ -5,10 +5,13 @@ services:
     restart: "no"
     command: |
       sh -c "
-        until pg_isready -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER}; do
-          echo 'Waiting for PostgreSQL...';
+        RETRIES=30
+        until pg_isready -h ${POSTGRES_HOST} -U ${POSTGRES_SUPER_USER} || [ \$RETRIES -eq 0 ]; do
+          echo \"Waiting for PostgreSQL... (\$RETRIES retries left)\";
+          RETRIES=\$((RETRIES-1))
           sleep 2;
         done;
+        [ \$RETRIES -eq 0 ] && echo 'Postgres not ready, aborting' && exit 1;
         psql postgresql://${POSTGRES_SUPER_USER}:${POSTGRES_SUPER_PASSWORD}@${POSTGRES_HOST}:5432/postgres <<-EOSQL
           SELECT 'CREATE USER ${POSTGRES_AUTHENTIK_USER} WITH PASSWORD ''${POSTGRES_AUTHENTIK_PASSWORD}'''
           WHERE NOT EXISTS (SELECT FROM pg_user WHERE usename = '${POSTGRES_AUTHENTIK_USER}')\gexec
@@ -52,13 +55,14 @@ services:
       AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_AUTHENTIK_PASSWORD}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
       AUTHENTIK_HOST: ${AUTHENTIK_HOST}
-      AUTHENTIK_EMAIL__HOST: ${AUTHENTIK_EMAIL__HOST}
-      AUTHENTIK_EMAIL__PORT: ${AUTHENTIK_EMAIL__PORT}
-      AUTHENTIK_EMAIL__USERNAME: ${AUTHENTIK_EMAIL__USERNAME}
-      AUTHENTIK_EMAIL__PASSWORD: ${AUTHENTIK_EMAIL__PASSWORD}
-      AUTHENTIK_EMAIL__USE_TLS: ${AUTHENTIK_EMAIL__USE_TLS}
-      AUTHENTIK_EMAIL__USE_SSL: ${AUTHENTIK_EMAIL__USE_SSL}
-      AUTHENTIK_EMAIL__FROM: ${AUTHENTIK_EMAIL__FROM}
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USERNAME}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASSWORD}
+      AUTHENTIK_EMAIL__USE_TLS: ${SMTP_USE_TLS}
+      AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL}
+      AUTHENTIK_EMAIL__TIMEOUT: ${SMTP_TIMEOUT}
+      AUTHENTIK_EMAIL__FROM: ${SMTP_FROM}
     volumes:
       - ./media:/data/media
       - ./templates:/templates
@@ -68,10 +72,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.authentik.rule=Host(`${AUTHENTIK_DOMAIN}`)"
-      - "traefik.http.routers.authentik.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.authentik.entrypoints=websecure"
       - "traefik.http.routers.authentik.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
       - "traefik.http.services.authentik.loadbalancer.server.port=${AUTHENTIK_PORT}"
-      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.docker.network=${NETWORK_INTERNAL}"
 
   worker:
     image: ${AUTHENTIK_IMAGE}:${AUTHENTIK_TAG}
@@ -104,19 +108,21 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: ${POSTGRES_AUTHENTIK_DB}
       AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_AUTHENTIK_PASSWORD}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
-      AUTHENTIK_EMAIL__HOST: ${AUTHENTIK_EMAIL__HOST}
-      AUTHENTIK_EMAIL__PORT: ${AUTHENTIK_EMAIL__PORT}
-      AUTHENTIK_EMAIL__USERNAME: ${AUTHENTIK_EMAIL__USERNAME}
-      AUTHENTIK_EMAIL__PASSWORD: ${AUTHENTIK_EMAIL__PASSWORD}
-      AUTHENTIK_EMAIL__USE_TLS: ${AUTHENTIK_EMAIL__USE_TLS}
-      AUTHENTIK_EMAIL__USE_SSL: ${AUTHENTIK_EMAIL__USE_SSL}
-      AUTHENTIK_EMAIL__FROM: ${AUTHENTIK_EMAIL__FROM}
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USERNAME}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASSWORD}
+      AUTHENTIK_EMAIL__USE_TLS: ${SMTP_USE_TLS}
+      AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL}
+      AUTHENTIK_EMAIL__TIMEOUT: ${SMTP_TIMEOUT}
+      AUTHENTIK_EMAIL__FROM: ${SMTP_FROM}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./media:/data/media
       - ./certs:/certs
       - ./templates:/templates
     networks:
+      - ${NETWORK_INTERNAL}
       - ${NETWORK_DATA}
 
 networks:

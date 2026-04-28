@@ -13,6 +13,7 @@ services:
           cpus: ${DOZZLE_CPU_RESERVATION}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data:/data
     environment:
       DOZZLE_LEVEL: ${DOZZLE_LEVEL}
       DOZZLE_FILTER: ${DOZZLE_FILTER}
@@ -21,10 +22,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dozzle.rule=Host(`${DOZZLE_DOMAIN}`)"
-      - "traefik.http.routers.dozzle.entrypoints=${TRAEFIK_ENTRYPOINT}"
+      - "traefik.http.routers.dozzle.entrypoints=websecure"
       - "traefik.http.routers.dozzle.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
       - "traefik.http.services.dozzle.loadbalancer.server.port=${DOZZLE_PORT}"
-      - "traefik.docker.network=${TRAEFIK_NETWORK}"
+      - "traefik.docker.network=${NETWORK_INTERNAL}"
       - "traefik.http.routers.dozzle.middlewares=authentik@file"
 
 networks:

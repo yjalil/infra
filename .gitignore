@@ -1,0 +1,36 @@
+# Environment
+.env
+
+# Traefik — generated at deploy time
+traefik/data/traefik.yml
+traefik/data/acme.json
+
+# Traefik — runtime data
+traefik/data/dynamic/*.log
+
+# Postgres data
+postgres/data/
+
+# Redis data
+redis/data/
+
+# Authentik runtime
+authentik/media/
+authentik/certs/
+
+# Dozzle runtime
+dozzle/data/
+
+# Registry data
+registry/data/
+registry/auth/htpasswd
+
+# Backups
+backup/backups/
+
+# Rclone config (contains secrets)
+backup/rclone/rclone.conf
+
+# OS
+.DS_Store
+Thumbs.db

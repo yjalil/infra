@@ -1,6 +1,8 @@
 include:
+  - traefik/docker-compose.yml
   - postgres/docker-compose.yml
   - redis/docker-compose.yml
-  - traefik/docker-compose.yml
   - authentik/docker-compose.yml
   - dozzle/docker-compose.yml
+  - backup/docker-compose.yml
+  - registry/docker-compose.yml

@@ -4,30 +4,30 @@ entryPoints:
     http:
       redirections:
         entryPoint:
-          to: ${TRAEFIK_ENTRYPOINT}
+          to: websecure
           scheme: https
-  ${TRAEFIK_ENTRYPOINT}:
+  websecure:
     address: ":443"
-    http:
-      tls:
-        certResolver: ${TRAEFIK_CERTRESOLVER}
 
 certificatesResolvers:
   ${TRAEFIK_CERTRESOLVER}:
     acme:
       email: ${ACME_EMAIL}
       storage: /acme.json
-      httpChallenge:
-        entryPoint: web
+      dnsChallenge:
+        provider: ${TRAEFIK_DNS_PROVIDER}
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
 
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: ${TRAEFIK_NETWORK}
+    network: ${NETWORK_INTERNAL}
   file:
     directory: /etc/traefik/dynamic
     watch: true
 
 log:
-  level: ${TRAEFIK_LOG_LEVEL}
+  level: INFO
