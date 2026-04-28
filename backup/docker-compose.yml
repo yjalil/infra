@@ -1,5 +1,8 @@
 services:
   postgres-backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
     image: ${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}
     restart: unless-stopped
     user: postgres:postgres

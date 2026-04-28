@@ -83,18 +83,17 @@ fi
 # ─── Backup directory ─────────────────────────────────────
 section "Backup setup"
 mkdir -p "$BACKUP_PATH"
-docker run --rm -v "$(pwd)/${BACKUP_PATH}:/backups" --entrypoint sh postgres:alpine -c "chown -R 999:999 /backups"
+docker run --rm \
+  -v "$(pwd)/$BACKUP_PATH:/backups" \
+  --entrypoint sh \
+  postgres:alpine \
+  -c "chown -R 999:999 /backups"
 info "Backup directory ready at $BACKUP_PATH"
 
 # ─── Build custom images ──────────────────────────────────
 section "Building custom images"
 docker build -t "${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}" ./backup
-info "postgres-backup image built"
-
-if [ "${REGISTRY_LOCAL:-false}" = "true" ]; then
-  docker push "${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}"
-  info "postgres-backup image pushed to registry"
-fi
+info "postgres-backup image built locally"
 
 # ─── Checklist ────────────────────────────────────────────
 echo -e "\n${GREEN}Bootstrap complete.${NC}\n"
