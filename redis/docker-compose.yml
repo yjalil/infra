@@ -1,7 +1,6 @@
 services:
   redis:
     image: ${REDIS_IMAGE}:${REDIS_IMAGE_TAG}
-    container_name: ${REDIS_HOST}
     restart: unless-stopped
     command: >
       redis-server

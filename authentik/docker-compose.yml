@@ -1,7 +1,6 @@
 services:
   authentik-provisioner:
     image: ${POSTGRES_IMAGE}:${POSTGRES_IMAGE_TAG}
-    container_name: authentik-provisioner
     restart: "no"
     command: |
       sh -c "
@@ -26,7 +25,6 @@ services:
 
   server:
     image: ${AUTHENTIK_IMAGE}:${AUTHENTIK_TAG}
-    container_name: ${AUTHENTIK_SERVER_HOST}
     command: server
     restart: unless-stopped
     depends_on:
@@ -79,7 +77,6 @@ services:
 
   worker:
     image: ${AUTHENTIK_IMAGE}:${AUTHENTIK_TAG}
-    container_name: ${AUTHENTIK_WORKER_HOST}
     command: worker
     restart: unless-stopped
     user: root

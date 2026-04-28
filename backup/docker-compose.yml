@@ -1,7 +1,6 @@
 services:
   postgres-backup:
     image: ${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}
-    container_name: postgres-backup
     restart: unless-stopped
     user: postgres:postgres
     environment:

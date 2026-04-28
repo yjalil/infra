@@ -1,7 +1,6 @@
 services:
   traefik:
     image: ${TRAEFIK_IMAGE}:${TRAEFIK_IMAGE_TAG}
-    container_name: ${TRAEFIK_HOST}
     restart: always
     networks:
       - internal-net

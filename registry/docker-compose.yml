@@ -1,7 +1,6 @@
 services:
   registry:
     image: ${REGISTRY_IMAGE}:${REGISTRY_IMAGE_TAG}
-    container_name: ${REGISTRY_HOST}
     restart: unless-stopped
     profiles:
       - registry

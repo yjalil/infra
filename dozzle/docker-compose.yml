@@ -1,7 +1,6 @@
 services:
   dozzle:
     image: ${DOZZLE_IMAGE}:${DOZZLE_TAG}
-    container_name: ${DOZZLE_HOST}
     restart: unless-stopped
     deploy:
       resources:
