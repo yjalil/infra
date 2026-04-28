@@ -31,3 +31,6 @@ providers:
 
 log:
   level: INFO
+
+api:
+  dashboard: true

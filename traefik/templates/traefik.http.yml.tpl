@@ -16,7 +16,9 @@ certificatesResolvers:
       storage: /acme.json
       httpChallenge:
         entryPoint: web
-
+api:
+  dashboard: true
+  
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
