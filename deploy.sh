@@ -12,6 +12,18 @@ warn()    { echo -e "${YELLOW}[!]${NC} $1"; }
 error()   { echo -e "${RED}[✘]${NC} $1"; exit 1; }
 section() { echo -e "\n${BLUE}──────────────────────────────────────${NC}\n${BLUE}$1${NC}"; }
 
+wait_healthy() {
+  local service=$1
+  local retries=30
+  info "Waiting for $service..."
+  until docker compose ps --format json "$service" 2>/dev/null | grep -q '"Health":"healthy"'; do
+    retries=$((retries - 1))
+    [ $retries -eq 0 ] && error "$service did not become healthy in time"
+    sleep 3
+  done
+  info "$service healthy"
+}
+
 # ─── .env ─────────────────────────────────────────────────
 section "Validating .env"
 [ -f .env ] || error ".env not found. Run ./bootstrap.sh first."
@@ -19,10 +31,10 @@ section "Validating .env"
 set -a && source .env && set +a
 
 MISSING=()
-[ "${DOMAIN}" = "example.com" ]           && MISSING+=("DOMAIN")
-[ "${ACME_EMAIL}" = "admin@example.com" ] && MISSING+=("ACME_EMAIL")
-[ "${SMTP_HOST}" = "mail.example.com" ]   && MISSING+=("SMTP_HOST")
-[ "${SMTP_PASSWORD}" = "FILL_ME" ]        && MISSING+=("SMTP_PASSWORD")
+[ "${DOMAIN}" = "example.com" ]             && MISSING+=("DOMAIN")
+[ "${ACME_EMAIL}" = "admin@example.com" ]   && MISSING+=("ACME_EMAIL")
+[ "${SMTP_HOST}" = "mail.example.com" ]     && MISSING+=("SMTP_HOST")
+[ "${SMTP_PASSWORD}" = "FILL_ME" ]          && MISSING+=("SMTP_PASSWORD")
 
 if [ ${#MISSING[@]} -gt 0 ]; then
   echo -e "${RED}[✘]${NC} The following required fields are not configured in .env:"
@@ -79,17 +91,8 @@ fi
 section "Starting core services"
 docker compose $COMPOSE_PROFILES up -d postgres redis
 
-info "Waiting for Postgres..."
-until docker inspect --format='{{.State.Health.Status}}' "$POSTGRES_HOST" 2>/dev/null | grep -q "healthy"; do
-  sleep 2
-done
-info "Postgres healthy"
-
-info "Waiting for Redis..."
-until docker inspect --format='{{.State.Health.Status}}' "$REDIS_HOST" 2>/dev/null | grep -q "healthy"; do
-  sleep 2
-done
-info "Redis healthy"
+wait_healthy postgres
+wait_healthy redis
 
 # ─── Full stack ───────────────────────────────────────────
 section "Starting remaining services"
