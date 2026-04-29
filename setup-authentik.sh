@@ -4,9 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load env
-set -a
-source "${SCRIPT_DIR}/.env"
-set +a
+while IFS= read -r line || [ -n "$line" ]; do
+  [[ "$line" =~ ^[[:space:]]*# || -z "${line// }" ]] && continue
+  key="${line%%=*}"
+  value="${line#*=}"
+  value="${value#\"}" && value="${value%\"}"
+  value="${value#\'}" && value="${value%\'}"
+  export "$key=$value"
+done < "${SCRIPT_DIR}/.env"
 
 WORKER_CONTAINER="${COMPOSE_PROJECT_NAME}-worker-1"
 BLUEPRINT_SRC="${SCRIPT_DIR}/authentik/blueprints/infra-apps.yaml.tpl"

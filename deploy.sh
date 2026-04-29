@@ -28,7 +28,14 @@ wait_healthy() {
 section "Validating .env"
 [ -f .env ] || error ".env not found. Run ./bootstrap.sh first."
 
-set -a && source .env && set +a
+while IFS= read -r line || [ -n "$line" ]; do
+  [[ "$line" =~ ^[[:space:]]*# || -z "${line// }" ]] && continue
+  key="${line%%=*}"
+  value="${line#*=}"
+  value="${value#\"}" && value="${value%\"}"
+  value="${value#\'}" && value="${value%\'}"
+  export "$key=$value"
+done < .env
 
 MISSING=()
 [ "${DOMAIN}" = "example.com" ]             && MISSING+=("DOMAIN")
