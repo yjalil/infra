@@ -23,7 +23,20 @@ until docker inspect --format='{{.State.Health.Status}}' "${WORKER_CONTAINER}" 2
 done
 echo "    Worker is healthy."
 
-echo "==> Triggering blueprint apply..."
+echo "==> Generating akadmin recovery link..."
+RECOVERY_LINK=$(docker exec "${WORKER_CONTAINER}" ak create_recovery_key 10 akadmin 2>/dev/null | grep -o 'http[s]*://[^ ]*')
+
+echo ""
+echo "  ┌──────────────────────────────────────────────────────────────┐"
+echo "  │  AUTHENTIK RECOVERY LINK (valid 10 minutes)                  │"
+echo "  │                                                              │"
+printf "  │  %s\n" "${RECOVERY_LINK}"
+echo "  │                                                              │"
+echo "  │  Save this — it won't be shown again.                        │"
+echo "  └──────────────────────────────────────────────────────────────┘"
+echo ""
+
+echo "==> Applying blueprint..."
 docker exec "${WORKER_CONTAINER}" ak apply_blueprint /blueprints/custom/infra-apps.yaml
 
 echo ""
@@ -31,4 +44,3 @@ echo "Done. Infra apps configured in Authentik:"
 echo "  - Traefik Dashboard -> https://${TRAEFIK_DOMAIN}"
 echo "  - Server Status     -> https://${DOZZLE_DOMAIN}"
 echo ""
-echo "Next: add Traefik forward-auth middleware labels to each service."
