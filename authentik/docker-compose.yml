@@ -111,6 +111,7 @@ services:
       - ./media:/data/media
       - ./certs:/certs
       - ./templates:/templates
+      - ./blueprints:/blueprints/custom
     networks:
       - internal-net
       - data-net
