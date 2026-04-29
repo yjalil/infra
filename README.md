@@ -10,7 +10,7 @@ Production-ready self-hosted infrastructure template.
 
 ### Option A — from Bitwarden (recommended for nexus/mother VPS)
 
-Requires `bw` CLI installed and a Bitwarden account with `nexus-bootstrap` and `nexus-rclone-conf` notes in the `devops` collection.
+Requires `bw` CLI installed and a Bitwarden account with `nexus-bootstrap` and `nexus-rclone-conf` notes.
 
 ```bash
 git clone https://github.com/yjalil/infra.git

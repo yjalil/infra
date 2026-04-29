@@ -25,17 +25,14 @@ info "Prerequisites OK"
 # ─── BW session ───────────────────────────────────────────
 section "Bitwarden authentication"
 if [ -z "${BW_SESSION:-}" ]; then
-  [ -z "${BW_CLIENTID:-}" ]     && error "BW_CLIENTID is not set. Export it before running this script."
-  [ -z "${BW_CLIENTSECRET:-}" ] && error "BW_CLIENTSECRET is not set. Export it before running this script."
-
   BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
 
   if [ "$BW_STATUS" = "unauthenticated" ]; then
-    bw login --apikey
-    info "Logged in via API key"
+    bw login
+    info "Logged in"
   fi
 
-  export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw 2>/dev/null || bw unlock --raw)
+  export BW_SESSION=$(bw unlock --raw)
 fi
 
 bw sync &>/dev/null
