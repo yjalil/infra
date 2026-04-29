@@ -18,20 +18,24 @@ BW_RCLONE_ITEM="nexus-rclone-conf"
 
 # ─── Prerequisites ────────────────────────────────────────
 section "Checking prerequisites"
-command -v bw &>/dev/null || error "Bitwarden CLI (bw) is not installed."
+command -v bw  &>/dev/null || error "Bitwarden CLI (bw) is not installed."
+command -v jq  &>/dev/null || error "jq is not installed."
 info "Prerequisites OK"
 
 # ─── BW session ───────────────────────────────────────────
 section "Bitwarden authentication"
 if [ -z "${BW_SESSION:-}" ]; then
-  echo "No BW_SESSION found. Logging in..."
-  BW_STATUS=$(bw status 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unauthenticated")
+  [ -z "${BW_CLIENTID:-}" ]     && error "BW_CLIENTID is not set. Export it before running this script."
+  [ -z "${BW_CLIENTSECRET:-}" ] && error "BW_CLIENTSECRET is not set. Export it before running this script."
+
+  BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
 
   if [ "$BW_STATUS" = "unauthenticated" ]; then
-    bw login
+    bw login --apikey
+    info "Logged in via API key"
   fi
 
-  export BW_SESSION=$(bw unlock --raw)
+  export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw 2>/dev/null || bw unlock --raw)
 fi
 
 bw sync &>/dev/null
@@ -42,14 +46,7 @@ section "Pulling secrets from Bitwarden"
 if [ -f "${SCRIPT_DIR}/.env" ]; then
   warn ".env already exists — skipping (delete it to re-pull)"
 else
-  NOTES=$(bw list items 2>/dev/null | python3 -c "
-import sys, json
-items = json.load(sys.stdin)
-item = next((i for i in items if i.get('name') == '${BW_BOOTSTRAP_ITEM}'), None)
-if not item:
-    sys.exit(1)
-print(item.get('notes', ''))
-")
+  NOTES=$(bw list items 2>/dev/null | jq -r --arg name "$BW_BOOTSTRAP_ITEM" '.[] | select(.name == $name) | .notes')
   [ -z "$NOTES" ] && error "Item '${BW_BOOTSTRAP_ITEM}' not found or has no notes in Bitwarden."
   echo "$NOTES" > "${SCRIPT_DIR}/.env"
   info ".env written from '${BW_BOOTSTRAP_ITEM}'"
@@ -62,14 +59,7 @@ if [ -f "$RCLONE_CONF" ]; then
   warn "rclone.conf already exists — skipping (delete it to re-pull)"
 else
   mkdir -p "$(dirname "$RCLONE_CONF")"
-  RCLONE_NOTES=$(bw list items 2>/dev/null | python3 -c "
-import sys, json
-items = json.load(sys.stdin)
-item = next((i for i in items if i.get('name') == '${BW_RCLONE_ITEM}'), None)
-if not item:
-    sys.exit(1)
-print(item.get('notes', ''))
-")
+  RCLONE_NOTES=$(bw list items 2>/dev/null | jq -r --arg name "$BW_RCLONE_ITEM" '.[] | select(.name == $name) | .notes')
   [ -z "$RCLONE_NOTES" ] && error "Item '${BW_RCLONE_ITEM}' not found or has no notes in Bitwarden."
   echo "$RCLONE_NOTES" > "$RCLONE_CONF"
   info "rclone.conf written from '${BW_RCLONE_ITEM}'"
