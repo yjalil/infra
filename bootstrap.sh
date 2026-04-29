@@ -82,13 +82,8 @@ fi
 
 # ─── Backup directory ─────────────────────────────────────
 section "Backup setup"
-mkdir -p "$BACKUP_PATH"
-docker run --rm \
-  -v "$(pwd)/$BACKUP_PATH:/backups" \
-  --entrypoint sh \
-  postgres:alpine \
-  -c "chown -R 999:999 /backups"
-info "Backup directory ready at $BACKUP_PATH"
+mkdir -p backup/backups
+info "Backup directory ready at backup/backups"
 
 # ─── Build custom images ──────────────────────────────────
 section "Building custom images"
@@ -101,7 +96,6 @@ echo -e "Before running ${YELLOW}./deploy.sh${NC}, review ${YELLOW}.env${NC} and
 echo -e "  ${RED}[ ]${NC} DOMAIN"
 echo -e "  ${RED}[ ]${NC} ACME_EMAIL"
 echo -e "  ${RED}[ ]${NC} SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD"
-echo -e "  ${RED}[ ]${NC} BACKUP_PATH              (if not local)"
 echo -e "  ${RED}[ ]${NC} RCLONE_DEST              (if using remote backup)"
 echo -e "  ${RED}[ ]${NC} TRAEFIK_DNS_PROVIDER/TOKEN (if using DNS challenge)"
 echo -e "  ${RED}[ ]${NC} backup/rclone/rclone.conf (copy from backup/rclone/ examples)"
