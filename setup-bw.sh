@@ -46,7 +46,17 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
 else
   NOTES=$(bw list items 2>/dev/null | jq -r --arg name "$BW_BOOTSTRAP_ITEM" '.[] | select(.name == $name) | .notes')
   [ -z "$NOTES" ] && error "Item '${BW_BOOTSTRAP_ITEM}' not found or has no notes in Bitwarden."
-  echo "$NOTES" > "${SCRIPT_DIR}/.env"
+  cp "${SCRIPT_DIR}/.env.example" "${SCRIPT_DIR}/.env"
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^[[:space:]]*# || -z "${line// }" ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    if grep -q "^${key}=" "${SCRIPT_DIR}/.env"; then
+      sed -i "s|^${key}=.*|${key}=${value}|" "${SCRIPT_DIR}/.env"
+    else
+      echo "${key}=${value}" >> "${SCRIPT_DIR}/.env"
+    fi
+  done <<< "$NOTES"
   info ".env written from '${BW_BOOTSTRAP_ITEM}'"
 fi
 
