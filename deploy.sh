@@ -53,8 +53,8 @@ for network in "$NETWORK_INTERNAL" "$NETWORK_DATA"; do
 done
 
 # ─── Traefik static config ────────────────────────────────
-section "Generating Traefik static config"
-mkdir -p traefik/data
+section "Generating Traefik config"
+mkdir -p traefik/data traefik/data/dynamic
 
 ACME_CHALLENGE="${TRAEFIK_ACME_CHALLENGE:-http}"
 if [ "$ACME_CHALLENGE" = "dns" ]; then
@@ -79,6 +79,9 @@ fi
 
 envsubst < "$TEMPLATE" > traefik/data/traefik.yml
 info "traefik.yml generated"
+
+envsubst < "traefik/templates/authentik.yml.tpl" > traefik/data/dynamic/authentik.yml
+info "authentik middleware generated"
 
 # ─── Registry profile ─────────────────────────────────────
 COMPOSE_PROFILES=""
