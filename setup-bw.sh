@@ -57,6 +57,9 @@ else
       echo "${key}=${value}" >> "${SCRIPT_DIR}/.env"
     fi
   done <<< "$NOTES"
+  DOMAIN=$(grep '^DOMAIN=' "${SCRIPT_DIR}/.env" | cut -d= -f2 | tr -d '"'"'")
+  export DOMAIN
+  envsubst '${DOMAIN}' < "${SCRIPT_DIR}/.env" > "${SCRIPT_DIR}/.env.tmp" && mv "${SCRIPT_DIR}/.env.tmp" "${SCRIPT_DIR}/.env"
   info ".env written from '${BW_BOOTSTRAP_ITEM}'"
 fi
 
