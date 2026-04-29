@@ -99,14 +99,21 @@ docker build -t "${POSTGRES_BACKUP_IMAGE}:${POSTGRES_BACKUP_IMAGE_TAG}" ./backup
 info "postgres-backup image built locally"
 
 # ─── Checklist ────────────────────────────────────────────
+MISSING=()
+[ "${DOMAIN:-example.com}" = "example.com" ]             && MISSING+=("DOMAIN")
+[ "${ACME_EMAIL:-admin@example.com}" = "admin@example.com" ] && MISSING+=("ACME_EMAIL")
+[ "${SMTP_PASSWORD:-changeme}" = "changeme" ]             && MISSING+=("SMTP_PASSWORD")
+[ "${VAULTWARDEN_ADMIN_TOKEN:-changeme}" = "changeme" ]   && MISSING+=("VAULTWARDEN_ADMIN_TOKEN")
+[ -z "${RCLONE_DEST:-}" ]                                 && MISSING+=("RCLONE_DEST (if using remote backup)")
+[ "${REGISTRY_LOCAL:-false}" = "true" ] && [ "${REGISTRY_PASSWORD:-changeme}" = "changeme" ] && MISSING+=("REGISTRY_USER / REGISTRY_PASSWORD")
+
 echo -e "\n${GREEN}Bootstrap complete.${NC}\n"
-echo -e "Before running ${YELLOW}./deploy.sh${NC}, review ${YELLOW}.env${NC} and fill in:\n"
-echo -e "  ${RED}[ ]${NC} DOMAIN"
-echo -e "  ${RED}[ ]${NC} ACME_EMAIL"
-echo -e "  ${RED}[ ]${NC} SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD"
-echo -e "  ${RED}[ ]${NC} VAULTWARDEN_ADMIN_TOKEN"
-echo -e "  ${RED}[ ]${NC} RCLONE_DEST              (if using remote backup)"
-echo -e "  ${RED}[ ]${NC} TRAEFIK_DNS_PROVIDER/TOKEN (if using DNS challenge)"
-echo -e "  ${RED}[ ]${NC} backup/rclone/rclone.conf (copy from backup/rclone/ examples)"
-[ "${REGISTRY_LOCAL:-false}" = "true" ] && echo -e "  ${RED}[ ]${NC} REGISTRY_USER / REGISTRY_PASSWORD"
-echo ""
+if [ ${#MISSING[@]} -eq 0 ]; then
+  info "All required values are set — ready to run ./deploy.sh"
+else
+  echo -e "Before running ${YELLOW}./deploy.sh${NC}, fill in:\n"
+  for item in "${MISSING[@]}"; do
+    echo -e "  ${RED}[ ]${NC} $item"
+  done
+  echo ""
+fi
