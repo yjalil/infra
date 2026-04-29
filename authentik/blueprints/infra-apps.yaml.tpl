@@ -21,6 +21,7 @@ entries:
       mode: "forward_single"
       external_host: "https://${TRAEFIK_DOMAIN}"
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       access_token_validity: "hours=24"
       intercept_header_auth: true
       internal_host_ssl_validation: false
@@ -50,6 +51,7 @@ entries:
       mode: "forward_single"
       external_host: "https://${DOZZLE_DOMAIN}"
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       access_token_validity: "hours=24"
       intercept_header_auth: true
       internal_host_ssl_validation: false
