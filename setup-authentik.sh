@@ -24,7 +24,8 @@ done
 echo "    Worker is healthy."
 
 echo "==> Generating akadmin recovery link..."
-RECOVERY_LINK=$(docker exec "${WORKER_CONTAINER}" ak create_recovery_key 10 akadmin 2>/dev/null | grep -o 'http[s]*://[^ ]*')
+RECOVERY_PATH=$(docker exec "${WORKER_CONTAINER}" ak create_recovery_key 10 akadmin 2>&1 | grep -o '/recovery/use-token/[^ ]*')
+RECOVERY_LINK="https://${AUTHENTIK_DOMAIN}${RECOVERY_PATH}"
 
 echo ""
 echo "  ┌──────────────────────────────────────────────────────────────┐"
