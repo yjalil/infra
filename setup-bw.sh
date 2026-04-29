@@ -28,6 +28,7 @@ if [ -z "${BW_SESSION:-}" ]; then
   BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
 
   if [ "$BW_STATUS" = "unauthenticated" ]; then
+    bw config server https://vault.bitwarden.eu
     bw login
     info "Logged in"
   fi
