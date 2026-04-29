@@ -24,7 +24,7 @@ done
 echo "    Worker is healthy."
 
 echo "==> Triggering blueprint apply..."
-docker exec "${WORKER_CONTAINER}" ak apply_blueprints
+docker exec "${WORKER_CONTAINER}" ak apply_blueprint /blueprints/custom/infra-apps.yaml
 
 echo ""
 echo "Done. Infra apps configured in Authentik:"
