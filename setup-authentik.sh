@@ -5,12 +5,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load env
 set -a
-source "${SCRIPT_DIR}/../.env"
+source "${SCRIPT_DIR}/.env"
 set +a
 
 WORKER_CONTAINER="${COMPOSE_PROJECT_NAME}-worker-1"
-BLUEPRINT_SRC="${SCRIPT_DIR}/blueprints/infra-apps.yaml.tpl"
-BLUEPRINT_OUT="${SCRIPT_DIR}/blueprints/infra-apps.yaml"
+BLUEPRINT_SRC="${SCRIPT_DIR}/authentik/blueprints/infra-apps.yaml.tpl"
+BLUEPRINT_OUT="${SCRIPT_DIR}/authentik/blueprints/infra-apps.yaml"
 
 echo "==> Rendering blueprint..."
 envsubst < "${BLUEPRINT_SRC}" > "${BLUEPRINT_OUT}"
