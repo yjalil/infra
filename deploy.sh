@@ -35,6 +35,7 @@ MISSING=()
 [ "${ACME_EMAIL}" = "admin@example.com" ]   && MISSING+=("ACME_EMAIL")
 [ "${SMTP_HOST}" = "mail.example.com" ]     && MISSING+=("SMTP_HOST")
 [ "${SMTP_PASSWORD}" = "FILL_ME" ]          && MISSING+=("SMTP_PASSWORD")
+[ "${VAULTWARDEN_ADMIN_TOKEN}" = "changeme" ] && MISSING+=("VAULTWARDEN_ADMIN_TOKEN")
 
 if [ ${#MISSING[@]} -gt 0 ]; then
   echo -e "${RED}[✘]${NC} The following required fields are not configured in .env:"
@@ -106,8 +107,9 @@ section "Stack status"
 docker compose ps
 
 echo -e "\n${GREEN}Deployment complete.${NC}"
-echo -e "  Traefik   : https://proxy.${DOMAIN}"
-echo -e "  Authentik : https://sso.${DOMAIN}"
-echo -e "  Dozzle    : https://logs.${DOMAIN}"
-[ "${REGISTRY_LOCAL:-false}" = "true" ] && echo -e "  Registry  : https://registry.${DOMAIN}"
+echo -e "  Traefik      : https://proxy.${DOMAIN}"
+echo -e "  Authentik    : https://sso.${DOMAIN}"
+echo -e "  Vaultwarden  : https://vault.${DOMAIN}"
+echo -e "  Dozzle       : https://logs.${DOMAIN}"
+[ "${REGISTRY_LOCAL:-false}" = "true" ] && echo -e "  Registry     : https://registry.${DOMAIN}"
 echo ""

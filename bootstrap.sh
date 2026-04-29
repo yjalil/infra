@@ -32,6 +32,7 @@ else
   cp .env.example .env
   sed -i "s|POSTGRES_SUPER_PASSWORD=changeme|POSTGRES_SUPER_PASSWORD=$(generate_secret)|" .env
   sed -i "s|POSTGRES_AUTHENTIK_PASSWORD=changeme|POSTGRES_AUTHENTIK_PASSWORD=$(generate_secret)|" .env
+  sed -i "s|POSTGRES_VAULTWARDEN_PASSWORD=changeme|POSTGRES_VAULTWARDEN_PASSWORD=$(generate_secret)|" .env
   sed -i "s|REDIS_PASSWORD=changeme|REDIS_PASSWORD=$(generate_secret)|" .env
   sed -i "s|AUTHENTIK_SECRET_KEY=changeme_min_50_chars|AUTHENTIK_SECRET_KEY=$(generate_secret)|" .env
   sed -i "s|SMTP_PASSWORD=changeme|SMTP_PASSWORD=FILL_ME|" .env
@@ -96,6 +97,7 @@ echo -e "Before running ${YELLOW}./deploy.sh${NC}, review ${YELLOW}.env${NC} and
 echo -e "  ${RED}[ ]${NC} DOMAIN"
 echo -e "  ${RED}[ ]${NC} ACME_EMAIL"
 echo -e "  ${RED}[ ]${NC} SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD"
+echo -e "  ${RED}[ ]${NC} VAULTWARDEN_ADMIN_TOKEN"
 echo -e "  ${RED}[ ]${NC} RCLONE_DEST              (if using remote backup)"
 echo -e "  ${RED}[ ]${NC} TRAEFIK_DNS_PROVIDER/TOKEN (if using DNS challenge)"
 echo -e "  ${RED}[ ]${NC} backup/rclone/rclone.conf (copy from backup/rclone/ examples)"

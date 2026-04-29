@@ -1,0 +1,70 @@
+services:
+  vaultwarden-provisioner:
+    image: ${POSTGRES_IMAGE}:${POSTGRES_IMAGE_TAG}
+    restart: "no"
+    environment:
+      PGPASSWORD: ${POSTGRES_SUPER_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_SUPER_USER: ${POSTGRES_SUPER_USER}
+      POSTGRES_SUPER_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
+      POSTGRES_VAULTWARDEN_USER: ${POSTGRES_VAULTWARDEN_USER}
+      POSTGRES_VAULTWARDEN_PASSWORD: ${POSTGRES_VAULTWARDEN_PASSWORD}
+      POSTGRES_VAULTWARDEN_DB: ${POSTGRES_VAULTWARDEN_DB}
+    command: sh /provision.sh
+    volumes:
+      - ./provision.sh:/provision.sh:ro
+    networks:
+      - data-net
+
+  vaultwarden:
+    image: ${VAULTWARDEN_IMAGE}:${VAULTWARDEN_TAG}
+    restart: unless-stopped
+    depends_on:
+      vaultwarden-provisioner:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/alive || exit 1"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    deploy:
+      resources:
+        limits:
+          memory: ${VAULTWARDEN_MEMORY_LIMIT}
+          cpus: ${VAULTWARDEN_CPU_LIMIT}
+        reservations:
+          memory: ${VAULTWARDEN_MEMORY_RESERVATION}
+          cpus: ${VAULTWARDEN_CPU_RESERVATION}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_VAULTWARDEN_USER}:${POSTGRES_VAULTWARDEN_PASSWORD}@${POSTGRES_HOST}/${POSTGRES_VAULTWARDEN_DB}
+      ADMIN_TOKEN: ${VAULTWARDEN_ADMIN_TOKEN}
+      DOMAIN: https://${VAULTWARDEN_DOMAIN}
+      SIGNUPS_ALLOWED: ${VAULTWARDEN_SIGNUPS_ALLOWED}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_SSL: ${SMTP_USE_SSL}
+      SMTP_EXPLICIT_TLS: ${SMTP_USE_TLS}
+    volumes:
+      - ./data:/data
+    networks:
+      - internal-net
+      - data-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vaultwarden.rule=Host(`${VAULTWARDEN_DOMAIN}`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=websecure"
+      - "traefik.http.routers.vaultwarden.tls.certresolver=${TRAEFIK_CERTRESOLVER}"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
+      - "traefik.docker.network=${NETWORK_INTERNAL}"
+
+networks:
+  internal-net:
+    name: ${NETWORK_INTERNAL}
+    external: true
+  data-net:
+    name: ${NETWORK_DATA}
+    external: true

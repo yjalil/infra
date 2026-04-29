@@ -2,11 +2,27 @@
 
 Production-ready self-hosted infrastructure template.
 
-**Stack:** Traefik · Postgres · Redis · Authentik · Dozzle · Postgres Backup · Docker Registry (optional)
+**Stack:** Traefik · Postgres · Redis · Authentik · Vaultwarden · Dozzle · Postgres Backup · Docker Registry (optional)
 
 ---
 
 ## First deploy
+
+### Option A — from Bitwarden (recommended for nexus/mother VPS)
+
+Requires `bw` CLI installed and a Bitwarden account with `nexus-bootstrap` and `nexus-rclone-conf` notes in the `devops` collection.
+
+```bash
+git clone https://github.com/yjalil/infra.git
+cd infra
+./setup-bw.sh
+./deploy.sh
+./setup-authentik.sh
+```
+
+`setup-bw.sh` pulls secrets from Bitwarden, writes `.env` and `backup/rclone/rclone.conf`, then runs `bootstrap.sh` automatically.
+
+### Option B — manual
 
 ```bash
 git clone https://github.com/yjalil/infra.git
@@ -18,30 +34,19 @@ Fill in `.env` — see checklist printed by bootstrap. Then:
 
 ```bash
 ./deploy.sh
+./setup-authentik.sh
 ```
 
 ---
 
-## What bootstrap does
+## What each script does
 
-- Generates `.env` with all secrets pre-filled
-- Creates Docker networks (`internal`, `data`)
-- Creates `traefik/data/acme.json` with correct permissions
-- Creates backup directory with correct ownership
-- Builds the `postgres-backup` image locally
-
-Run once per server. Idempotent — safe to re-run.
-
----
-
-## What deploy does
-
-- Validates `.env` is filled
-- Generates `traefik/data/traefik.yml` from template
-- Starts Postgres + Redis first, waits for healthy
-- Brings up the full stack
-
-Run on every update: `git pull && ./deploy.sh`
+| Script | Run | Purpose |
+|--------|-----|---------|
+| `setup-bw.sh` | Once | Pull secrets from Bitwarden → write `.env` + `rclone.conf` → run bootstrap |
+| `bootstrap.sh` | Once | Generate `.env`, create Docker networks, create `acme.json`, build backup image |
+| `deploy.sh` | Every update | Validate `.env`, generate Traefik config, start the full stack |
+| `setup-authentik.sh` | Once | Configure Authentik apps (Traefik, Dozzle, Vaultwarden) via blueprint |
 
 ---
 
@@ -49,10 +54,10 @@ Run on every update: `git pull && ./deploy.sh`
 
 Two external Docker networks must exist before deploy — bootstrap creates them.
 
-| Network    | Purpose                        |
-|------------|--------------------------------|
-| `internal` | Traefik ↔ services             |
-| `data`     | Services ↔ Postgres, Redis     |
+| Network    | Purpose                    |
+|------------|----------------------------|
+| `internal` | Traefik ↔ services         |
+| `data`     | Services ↔ Postgres, Redis |
 
 ---
 
@@ -77,8 +82,9 @@ Postgres is backed up daily via `prodrigestivill/postgres-backup-local` + rclone
 Configure destination in `.env`:
 
 ```bash
-BACKUP_PATH=./backup/backups        # local
-RCLONE_DEST=s3:mybucket/postgres    # or sftp:path
+RCLONE_DEST=gdrive:Backups/nexus    # Google Drive
+RCLONE_DEST=s3:mybucket/postgres    # S3-compatible
+RCLONE_DEST=sftp:path               # SFTP
 ```
 
 Copy the relevant config from `backup/rclone/` examples and place at `backup/rclone/rclone.conf`.
@@ -90,7 +96,7 @@ Copy the relevant config from `backup/rclone/` examples and place at `backup/rcl
 1. Create `myservice/docker-compose.yml`
 2. Add provisioner sidecar if it needs a Postgres DB (see `authentik/docker-compose.yml`)
 3. Add to root `docker-compose.yml` includes
-4. Add vars to `.env`
+4. Add vars to `.env.example`
 
 ---
 
