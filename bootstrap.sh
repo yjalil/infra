@@ -40,7 +40,14 @@ else
 fi
 
 # Source .env for the rest of the script
-set -a && source .env && set +a
+while IFS= read -r line || [ -n "$line" ]; do
+  [[ "$line" =~ ^[[:space:]]*# || -z "${line// }" ]] && continue
+  key="${line%%=*}"
+  value="${line#*=}"
+  value="${value#\"}" && value="${value%\"}"
+  value="${value#\'}" && value="${value%\'}"
+  export "$key=$value"
+done < .env
 
 # ─── Networks ─────────────────────────────────────────────
 section "Creating Docker networks"
