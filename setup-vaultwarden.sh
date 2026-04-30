@@ -32,7 +32,7 @@ COOKIE_JAR=$(mktemp)
 section "Authenticating with admin panel"
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -c "$COOKIE_JAR" \
   -X POST "${VW_URL}/admin/" \
-  -F "token=${VAULTWARDEN_ADMIN_TOKEN_PLAIN}")
+  --data-urlencode "token=${VAULTWARDEN_ADMIN_TOKEN_PLAIN}")
 
 [ "$HTTP_STATUS" != "200" ] && error "Admin login failed (HTTP ${HTTP_STATUS}). Check VAULTWARDEN_ADMIN_TOKEN."
 info "Admin authenticated"
