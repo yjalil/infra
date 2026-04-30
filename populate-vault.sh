@@ -11,7 +11,6 @@ NC='\033[0m'
 
 info()    { echo -e "${GREEN}[✔]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[!]${NC} $1"; }
-error()   { echo -e "${RED}[✘]${NC} $1"; exit 1; }
 section() { echo -e "\n${BLUE}──────────────────────────────────────${NC}\n${BLUE}$1${NC}"; }
 
 # Load env
@@ -24,87 +23,84 @@ while IFS= read -r line || [ -n "$line" ]; do
   export "$key=$value"
 done < "${SCRIPT_DIR}/.env"
 
-section "Connecting to Vaultwarden"
-bw logout &>/dev/null || true
-bw config server "https://${VAULTWARDEN_DOMAIN}"
+section "Generating vault import file"
 
-read -r -s -p "Vaultwarden master password: " VW_PASS; echo ""
-bw login "$ACME_EMAIL" "$VW_PASS"
-export BW_SESSION=$(bw unlock "$VW_PASS" --raw)
-unset VW_PASS
-bw sync &>/dev/null
-info "Connected"
+FOLDER_ID="00000000-0000-0000-0000-000000000001"
+EXPORT_FILE=$(mktemp /tmp/vault-import-XXXXXX.json)
 
-# ─── Helpers ──────────────────────────────────────────────
+jq -n \
+  --arg folder_id "$FOLDER_ID" \
+  --arg pg_super_user "$POSTGRES_SUPER_USER" \
+  --arg pg_super_pass "$POSTGRES_SUPER_PASSWORD" \
+  --arg pg_ak_user "$POSTGRES_AUTHENTIK_USER" \
+  --arg pg_ak_pass "$POSTGRES_AUTHENTIK_PASSWORD" \
+  --arg pg_vw_user "$POSTGRES_VAULTWARDEN_USER" \
+  --arg pg_vw_pass "$POSTGRES_VAULTWARDEN_PASSWORD" \
+  --arg redis_pass "$REDIS_PASSWORD" \
+  --arg ak_domain "https://${AUTHENTIK_DOMAIN}" \
+  --arg ak_secret "$AUTHENTIK_SECRET_KEY" \
+  --arg vw_admin_token "$VAULTWARDEN_ADMIN_TOKEN_PLAIN" \
+  --arg vw_domain "https://${VAULTWARDEN_DOMAIN}" \
+  --arg reg_user "$REGISTRY_USER" \
+  --arg reg_pass "$REGISTRY_PASSWORD" \
+  --arg reg_url "https://${REGISTRY_DOMAIN}" \
+  --arg smtp_user "$SMTP_USERNAME" \
+  --arg smtp_pass "$SMTP_PASSWORD" \
+  --arg smtp_host "$SMTP_HOST" \
+'{
+  "encrypted": false,
+  "folders": [{"id": $folder_id, "name": "Infrastructure"}],
+  "items": [
+    {
+      "type": 1, "name": "Postgres - Superuser", "folderId": $folder_id,
+      "login": {"username": $pg_super_user, "password": $pg_super_pass, "uris": []}
+    },
+    {
+      "type": 1, "name": "Postgres - Authentik", "folderId": $folder_id,
+      "login": {"username": $pg_ak_user, "password": $pg_ak_pass, "uris": []}
+    },
+    {
+      "type": 1, "name": "Postgres - Vaultwarden", "folderId": $folder_id,
+      "login": {"username": $pg_vw_user, "password": $pg_vw_pass, "uris": []}
+    },
+    {
+      "type": 1, "name": "Redis", "folderId": $folder_id,
+      "login": {"username": "default", "password": $redis_pass, "uris": []}
+    },
+    {
+      "type": 1, "name": "Authentik - Admin", "folderId": $folder_id,
+      "login": {"username": "akadmin", "password": "", "uris": [{"uri": $ak_domain}]}
+    },
+    {
+      "type": 2, "name": "Authentik - Secret Key", "folderId": $folder_id,
+      "secureNote": {"type": 0}, "notes": $ak_secret
+    },
+    {
+      "type": 2, "name": "Vaultwarden - Admin Token", "folderId": $folder_id,
+      "secureNote": {"type": 0}, "notes": $vw_admin_token
+    },
+    {
+      "type": 1, "name": "Docker Registry", "folderId": $folder_id,
+      "login": {"username": $reg_user, "password": $reg_pass, "uris": [{"uri": $reg_url}]}
+    },
+    {
+      "type": 1, "name": "SMTP", "folderId": $folder_id,
+      "notes": $smtp_host,
+      "login": {"username": $smtp_user, "password": $smtp_pass, "uris": []}
+    }
+  ]
+}' > "$EXPORT_FILE"
 
-get_or_create_folder() {
-  local name=$1
-  local id
-  id=$(bw list folders | jq -r --arg n "$name" '.[] | select(.name == $n) | .id')
-  if [ -z "$id" ]; then
-    id=$(bw get template folder | jq --arg n "$name" '.name = $n' | bw encode | bw create folder | jq -r '.id')
-    info "Folder '$name' created"
-  fi
-  echo "$id"
-}
+info "Export file generated: $EXPORT_FILE"
 
-item_exists() {
-  local name=$1
-  bw list items --search "$name" 2>/dev/null | jq -e --arg n "$name" 'any(.[]; .name == $n)' > /dev/null 2>&1
-}
-
-create_login() {
-  local name=$1 username=$2 password=$3 folder_id=$4 url=${5:-}
-  item_exists "$name" && { warn "$name already exists — skipping"; return; }
-  bw get template item | jq \
-    --arg n "$name" --arg u "$username" --arg p "$password" --arg f "$folder_id" --arg url "$url" \
-    '.name = $n | .type = 1 | .folderId = $f |
-     .login = {"username": $u, "password": $p, "uris": (if $url != "" then [{"match": null, "uri": $url}] else [] end)}' | \
-    bw encode | bw create item > /dev/null
-  info "$name"
-}
-
-create_note() {
-  local name=$1 notes=$2 folder_id=$3
-  item_exists "$name" && { warn "$name already exists — skipping"; return; }
-  bw get template item | jq \
-    --arg n "$name" --arg notes "$notes" --arg f "$folder_id" \
-    '.name = $n | .type = 2 | .folderId = $f | .secureNote = {"type": 0} | .notes = $notes' | \
-    bw encode | bw create item > /dev/null
-  info "$name"
-}
-
-# ─── Create folder ─────────────────────────────────────────
-section "Setting up folder"
-FOLDER_ID=$(get_or_create_folder "Infrastructure")
-
-# ─── Postgres ──────────────────────────────────────────────
-section "Postgres"
-create_login "Postgres - Superuser" "$POSTGRES_SUPER_USER" "$POSTGRES_SUPER_PASSWORD" "$FOLDER_ID"
-create_login "Postgres - Authentik" "$POSTGRES_AUTHENTIK_USER" "$POSTGRES_AUTHENTIK_PASSWORD" "$FOLDER_ID"
-create_login "Postgres - Vaultwarden" "${POSTGRES_VAULTWARDEN_USER}" "${POSTGRES_VAULTWARDEN_PASSWORD}" "$FOLDER_ID"
-
-# ─── Redis ─────────────────────────────────────────────────
-section "Redis"
-create_login "Redis" "default" "$REDIS_PASSWORD" "$FOLDER_ID"
-
-# ─── Authentik ─────────────────────────────────────────────
-section "Authentik"
-create_login "Authentik - Admin" "akadmin" "" "$FOLDER_ID" "https://${AUTHENTIK_DOMAIN}"
-create_note  "Authentik - Secret Key" "$AUTHENTIK_SECRET_KEY" "$FOLDER_ID"
-
-# ─── Vaultwarden ───────────────────────────────────────────
-section "Vaultwarden"
-create_note "Vaultwarden - Admin Token" "$VAULTWARDEN_ADMIN_TOKEN" "$FOLDER_ID"
-
-# ─── Registry ──────────────────────────────────────────────
-section "Registry"
-create_login "Docker Registry" "$REGISTRY_USER" "$REGISTRY_PASSWORD" "$FOLDER_ID" "https://${REGISTRY_DOMAIN}"
-
-# ─── SMTP ──────────────────────────────────────────────────
-section "SMTP"
-create_login "SMTP" "$SMTP_USERNAME" "$SMTP_PASSWORD" "$FOLDER_ID"
-
-# ─── Done ──────────────────────────────────────────────────
 echo ""
-info "Vault populated. Open https://${VAULTWARDEN_DOMAIN} to view."
+echo -e "  ${YELLOW}Import this file into Vaultwarden:${NC}"
+echo -e "  1. Open ${BLUE}${vw_domain:-https://${VAULTWARDEN_DOMAIN}}${NC}"
+echo -e "  2. Go to ${YELLOW}Tools → Import Data${NC}"
+echo -e "  3. Format: ${YELLOW}Bitwarden (json)${NC}"
+echo -e "  4. Upload: ${YELLOW}${EXPORT_FILE}${NC}"
+echo ""
+read -r -p "Press Enter once imported to delete the file..."
+
+rm -f "$EXPORT_FILE"
+info "Export file deleted"
