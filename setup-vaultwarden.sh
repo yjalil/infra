@@ -39,24 +39,32 @@ info "Admin authenticated"
 
 section "Checking if ${ACME_EMAIL} already exists"
 USERS=$(curl -s -b "$COOKIE_JAR" "${VW_URL}/admin/users/overview")
-if echo "$USERS" | grep -qi "${ACME_EMAIL}"; then
-  warn "${ACME_EMAIL} already has an account"
-  rm -f "$COOKIE_JAR"
-  exit 0
+USER_EXISTS=false
+echo "$USERS" | grep -qi "${ACME_EMAIL}" && USER_EXISTS=true
+
+if [ "$USER_EXISTS" = "false" ]; then
+  section "Enabling signups temporarily"
+  curl -s -b "$COOKIE_JAR" \
+    -X POST "${VW_URL}/admin/config" \
+    -H "Content-Type: application/json" \
+    -d '{"signups_allowed": true}' > /dev/null
+  info "Signups enabled"
+
+  echo ""
+  echo -e "  ${YELLOW}Register your account now at:${NC}"
+  echo -e "  ${BLUE}${VW_URL}/#/register${NC}"
+  echo ""
+  read -r -p "Press Enter once you have registered..."
+
+  section "Disabling signups"
+  curl -s -b "$COOKIE_JAR" \
+    -X POST "${VW_URL}/admin/config" \
+    -H "Content-Type: application/json" \
+    -d '{"signups_allowed": false}' > /dev/null
+  info "Signups disabled"
+else
+  warn "${ACME_EMAIL} already has an account — skipping registration"
 fi
-
-section "Enabling signups temporarily"
-curl -s -b "$COOKIE_JAR" \
-  -X POST "${VW_URL}/admin/config" \
-  -H "Content-Type: application/json" \
-  -d '{"signups_allowed": true}' > /dev/null
-info "Signups enabled"
-
-echo ""
-echo -e "  ${YELLOW}Register your account now at:${NC}"
-echo -e "  ${BLUE}${VW_URL}/#/register${NC}"
-echo ""
-read -r -p "Press Enter once you have registered..."
 
 section "Verifying email for ${ACME_EMAIL}"
 USER_UUID=$(curl -s -b "$COOKIE_JAR" "${VW_URL}/admin/users/overview" | \
@@ -68,13 +76,6 @@ if [ -n "$USER_UUID" ]; then
 else
   warn "Could not find user to verify — verify manually in admin panel"
 fi
-
-section "Disabling signups"
-curl -s -b "$COOKIE_JAR" \
-  -X POST "${VW_URL}/admin/config" \
-  -H "Content-Type: application/json" \
-  -d '{"signups_allowed": false}' > /dev/null
-info "Signups disabled"
 
 rm -f "$COOKIE_JAR"
 info "Vaultwarden setup complete"
