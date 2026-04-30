@@ -25,7 +25,11 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "${SCRIPT_DIR}/.env"
 
 section "Connecting to Vaultwarden"
-bw config server "https://${VAULTWARDEN_DOMAIN}"
+CURRENT_SERVER=$(bw config server 2>/dev/null || echo "")
+if [ "$CURRENT_SERVER" != "https://${VAULTWARDEN_DOMAIN}" ]; then
+  bw logout &>/dev/null || true
+  bw config server "https://${VAULTWARDEN_DOMAIN}"
+fi
 
 BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
 if [ "$BW_STATUS" = "unauthenticated" ]; then
