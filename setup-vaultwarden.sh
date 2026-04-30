@@ -58,6 +58,17 @@ echo -e "  ${BLUE}${VW_URL}/#/register${NC}"
 echo ""
 read -r -p "Press Enter once you have registered..."
 
+section "Verifying email for ${ACME_EMAIL}"
+USER_UUID=$(curl -s -b "$COOKIE_JAR" "${VW_URL}/admin/users/overview" | \
+  jq -r --arg email "${ACME_EMAIL}" '.data[] | select(.Email == $email) | .Id' 2>/dev/null || true)
+
+if [ -n "$USER_UUID" ]; then
+  curl -s -b "$COOKIE_JAR" -X POST "${VW_URL}/admin/users/${USER_UUID}/verify_email" > /dev/null
+  info "Email verified"
+else
+  warn "Could not find user to verify — verify manually in admin panel"
+fi
+
 section "Disabling signups"
 curl -s -b "$COOKIE_JAR" \
   -X POST "${VW_URL}/admin/config" \
