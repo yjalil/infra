@@ -24,6 +24,7 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "${SCRIPT_DIR}/.env"
 
 section "Generating vault import file"
+# Note: uses jq to build a Bitwarden-format JSON for manual web import
 
 FOLDER_ID="00000000-0000-0000-0000-000000000001"
 EXPORT_FILE=$(mktemp /tmp/vault-import-XXXXXX.json)

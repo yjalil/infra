@@ -1,0 +1,12 @@
+{
+  "name": "infra",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,readonly"
+  ],
+  "postCreateCommand": "cd /workspace/terraform/envs/test && terraform init"
+}

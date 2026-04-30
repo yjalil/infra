@@ -1,0 +1,2 @@
+# No tfvars file needed — everything comes from Bitwarden via spin.sh
+# See nexus-terraform note in vault.bitwarden.eu

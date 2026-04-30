@@ -31,13 +31,20 @@ if [ -z "${BW_SESSION:-}" ]; then
     bw config server https://vault.bitwarden.eu
   fi
 
-  BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
-  if [ "$BW_STATUS" = "unauthenticated" ]; then
-    bw login
-    info "Logged in"
+  # Non-interactive path: API key + master password (used by Terraform remote-exec)
+  if [ -n "${BW_CLIENTID:-}" ] && [ -n "${BW_CLIENTSECRET:-}" ] && [ -n "${BW_PASSWORD:-}" ]; then
+    bw login --apikey 2>/dev/null || true
+    export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
+    info "Authenticated via API key"
+  else
+    # Interactive fallback for local use
+    BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
+    if [ "$BW_STATUS" = "unauthenticated" ]; then
+      bw login
+      info "Logged in"
+    fi
+    export BW_SESSION=$(bw unlock --raw)
   fi
-
-  export BW_SESSION=$(bw unlock --raw)
 fi
 
 bw sync &>/dev/null
@@ -61,6 +68,11 @@ else
       echo "${key}=${value}" >> "${SCRIPT_DIR}/.env"
     fi
   done <<< "$NOTES"
+  # DOMAIN can be injected by the caller (e.g. Terraform per-env) to override the note
+  if [ -n "${DOMAIN:-}" ]; then
+    sed -i "s|^DOMAIN=.*|DOMAIN=${DOMAIN}|" "${SCRIPT_DIR}/.env"
+    info "DOMAIN overridden to ${DOMAIN}"
+  fi
   DOMAIN=$(grep '^DOMAIN=' "${SCRIPT_DIR}/.env" | cut -d= -f2 | tr -d '"'"'")
   export DOMAIN
   envsubst '${DOMAIN}' < "${SCRIPT_DIR}/.env" > "${SCRIPT_DIR}/.env.tmp" && mv "${SCRIPT_DIR}/.env.tmp" "${SCRIPT_DIR}/.env"
