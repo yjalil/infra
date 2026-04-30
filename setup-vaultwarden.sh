@@ -66,17 +66,6 @@ else
   warn "${ACME_EMAIL} already has an account — skipping registration"
 fi
 
-section "Verifying email for ${ACME_EMAIL}"
-USERS_RESPONSE=$(curl -s -b "$COOKIE_JAR" "${VW_URL}/admin/users/overview")
-USER_UUID=$(echo "$USERS_RESPONSE" | \
-  jq -r --arg email "${ACME_EMAIL}" 'if type == "array" then .[] else .data[] end | select(.Email == $email) | .Id' 2>/dev/null || true)
-
-if [ -n "$USER_UUID" ]; then
-  curl -s -b "$COOKIE_JAR" -X POST "${VW_URL}/admin/users/${USER_UUID}/verify_email" > /dev/null
-  info "Email verified"
-else
-  warn "Could not find user to verify — verify manually in admin panel"
-fi
 
 rm -f "$COOKIE_JAR"
 info "Vaultwarden setup complete"
