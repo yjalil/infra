@@ -28,11 +28,10 @@ section "Connecting to Vaultwarden"
 bw logout &>/dev/null || true
 bw config server "https://${VAULTWARDEN_DOMAIN}"
 
-read -r -s -p "Vaultwarden master password: " BW_MASTER_PASSWORD; echo ""
-export BW_MASTER_PASSWORD
-export BW_SESSION=$(bw login "$ACME_EMAIL" --passwordenv BW_MASTER_PASSWORD --raw 2>/dev/null || \
-  bw unlock --passwordenv BW_MASTER_PASSWORD --raw)
-unset BW_MASTER_PASSWORD
+read -r -s -p "Vaultwarden master password: " VW_PASS; echo ""
+bw login "$ACME_EMAIL" "$VW_PASS"
+export BW_SESSION=$(bw unlock "$VW_PASS" --raw)
+unset VW_PASS
 bw sync &>/dev/null
 info "Connected"
 
