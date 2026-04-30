@@ -25,17 +25,14 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "${SCRIPT_DIR}/.env"
 
 section "Connecting to Vaultwarden"
-CURRENT_SERVER=$(bw config server 2>/dev/null || echo "")
-if [ "$CURRENT_SERVER" != "https://${VAULTWARDEN_DOMAIN}" ]; then
-  bw logout &>/dev/null || true
-  bw config server "https://${VAULTWARDEN_DOMAIN}"
-fi
+bw logout &>/dev/null || true
+bw config server "https://${VAULTWARDEN_DOMAIN}"
 
-BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
-if [ "$BW_STATUS" = "unauthenticated" ]; then
-  bw login "$ACME_EMAIL"
-fi
-export BW_SESSION=$(bw unlock --raw)
+read -r -s -p "Vaultwarden master password: " BW_MASTER_PASSWORD; echo ""
+export BW_MASTER_PASSWORD
+export BW_SESSION=$(bw login "$ACME_EMAIL" --passwordenv BW_MASTER_PASSWORD --raw 2>/dev/null || \
+  bw unlock --passwordenv BW_MASTER_PASSWORD --raw)
+unset BW_MASTER_PASSWORD
 bw sync &>/dev/null
 info "Connected"
 

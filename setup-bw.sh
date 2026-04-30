@@ -25,10 +25,14 @@ info "Prerequisites OK"
 # ─── BW session ───────────────────────────────────────────
 section "Bitwarden authentication"
 if [ -z "${BW_SESSION:-}" ]; then
-  BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
-
-  if [ "$BW_STATUS" = "unauthenticated" ]; then
+  CURRENT_SERVER=$(bw config server 2>/dev/null || echo "")
+  if [ "$CURRENT_SERVER" != "https://vault.bitwarden.eu" ]; then
+    bw logout &>/dev/null || true
     bw config server https://vault.bitwarden.eu
+  fi
+
+  BW_STATUS=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
+  if [ "$BW_STATUS" = "unauthenticated" ]; then
     bw login
     info "Logged in"
   fi
