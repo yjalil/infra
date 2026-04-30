@@ -67,8 +67,9 @@ else
 fi
 
 section "Verifying email for ${ACME_EMAIL}"
-USER_UUID=$(curl -s -b "$COOKIE_JAR" "${VW_URL}/admin/users/overview" | \
-  jq -r --arg email "${ACME_EMAIL}" '.data[] | select(.Email == $email) | .Id' 2>/dev/null || true)
+USERS_RESPONSE=$(curl -s -b "$COOKIE_JAR" "${VW_URL}/admin/users/overview")
+USER_UUID=$(echo "$USERS_RESPONSE" | \
+  jq -r --arg email "${ACME_EMAIL}" 'if type == "array" then .[] else .data[] end | select(.Email == $email) | .Id' 2>/dev/null || true)
 
 if [ -n "$USER_UUID" ]; then
   curl -s -b "$COOKIE_JAR" -X POST "${VW_URL}/admin/users/${USER_UUID}/verify_email" > /dev/null
