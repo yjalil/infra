@@ -37,24 +37,33 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -c "$COOKIE_JAR" \
 [ "$HTTP_STATUS" != "200" ] && error "Admin login failed (HTTP ${HTTP_STATUS}). Check VAULTWARDEN_ADMIN_TOKEN."
 info "Admin authenticated"
 
-section "Inviting ${ACME_EMAIL}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -b "$COOKIE_JAR" \
-  -X POST "${VW_URL}/admin/invite" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\": \"${ACME_EMAIL}\"}")
-
-HTTP_STATUS=$(echo "$RESPONSE" | tail -1)
-BODY=$(echo "$RESPONSE" | head -1)
-
-if [ "$HTTP_STATUS" = "200" ]; then
-  info "Invite sent to ${ACME_EMAIL}"
-  echo ""
-  echo -e "  Check your email and complete registration at:"
-  echo -e "  ${BLUE}${VW_URL}${NC}"
-elif echo "$BODY" | grep -qi "already exists\|already been taken"; then
+section "Checking if ${ACME_EMAIL} already exists"
+USERS=$(curl -s -b "$COOKIE_JAR" "${VW_URL}/admin/users/overview")
+if echo "$USERS" | grep -qi "${ACME_EMAIL}"; then
   warn "${ACME_EMAIL} already has an account"
-else
-  error "Invite failed (HTTP ${HTTP_STATUS}): ${BODY}"
+  rm -f "$COOKIE_JAR"
+  exit 0
 fi
 
+section "Enabling signups temporarily"
+curl -s -b "$COOKIE_JAR" \
+  -X POST "${VW_URL}/admin/config" \
+  -H "Content-Type: application/json" \
+  -d '{"signups_allowed": true}' > /dev/null
+info "Signups enabled"
+
+echo ""
+echo -e "  ${YELLOW}Register your account now at:${NC}"
+echo -e "  ${BLUE}${VW_URL}/#/register${NC}"
+echo ""
+read -r -p "Press Enter once you have registered..."
+
+section "Disabling signups"
+curl -s -b "$COOKIE_JAR" \
+  -X POST "${VW_URL}/admin/config" \
+  -H "Content-Type: application/json" \
+  -d '{"signups_allowed": false}' > /dev/null
+info "Signups disabled"
+
 rm -f "$COOKIE_JAR"
+info "Vaultwarden setup complete"
