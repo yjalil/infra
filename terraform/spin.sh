@@ -16,7 +16,12 @@ if [ -z "${BW_SESSION:-}" ]; then
     bw logout &>/dev/null || true
     bw config server https://vault.bitwarden.eu
   fi
-  export BW_SESSION=$(bw unlock --raw)
+  BW_STATUS=$(bw status 2>/dev/null | jq -r '.status // "unauthenticated"')
+  if [ "$BW_STATUS" = "unauthenticated" ]; then
+    export BW_SESSION=$(bw login --raw)
+  else
+    export BW_SESSION=$(bw unlock --raw)
+  fi
 fi
 
 bw sync &>/dev/null

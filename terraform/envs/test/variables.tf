@@ -1,13 +1,12 @@
 variable "hcloud_token" {
   description = "Hetzner Cloud API token"
   type        = string
-  sensitive   = true
 }
 
 variable "server_type" {
   description = "Hetzner server type"
   type        = string
-  default     = "cpx11"
+  default     = "cx23"
 }
 
 variable "location" {
@@ -46,7 +45,6 @@ variable "cpanel_user" {
 variable "cpanel_token" {
   description = "cPanel API token — generate in cPanel → Security → Manage API Tokens"
   type        = string
-  sensitive   = true
 }
 
 variable "dotfiles_repo" {
@@ -62,18 +60,15 @@ variable "infra_repo" {
 variable "bw_client_id" {
   description = "Bitwarden API client ID — vault.bitwarden.eu → Settings → Security → API Key"
   type        = string
-  sensitive   = true
 }
 
 variable "bw_client_secret" {
   description = "Bitwarden API client secret"
   type        = string
-  sensitive   = true
 }
 
 variable "bw_password" {
   description = "Bitwarden master password — not in tfvars, Terraform will prompt"
   type        = string
-  sensitive   = true
   # intentionally no default — entered interactively or via TF_VAR_bw_password env var
 }

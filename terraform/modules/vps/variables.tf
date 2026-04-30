@@ -6,7 +6,7 @@ variable "env_name" {
 variable "server_type" {
   description = "Hetzner server type"
   type        = string
-  default     = "cpx11"
+  default     = "cx23"
 }
 
 variable "location" {
@@ -60,17 +60,14 @@ variable "infra_repo" {
 variable "bw_client_id" {
   description = "Bitwarden API client ID (Settings → Security → API Key)"
   type        = string
-  sensitive   = true
 }
 
 variable "bw_client_secret" {
   description = "Bitwarden API client secret"
   type        = string
-  sensitive   = true
 }
 
 variable "bw_password" {
   description = "Bitwarden master password — passed from caller, never stored in tfvars"
   type        = string
-  sensitive   = true
 }

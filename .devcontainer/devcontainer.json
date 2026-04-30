@@ -1,12 +1,30 @@
 {
   "name": "infra",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": "."
   },
+  "updateRemoteUserUID": false,
+  "userEnvProbe": "loginShell",
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "mounts": [
-    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,readonly"
+    "source=infra-data,target=/home/vscode/persistent-data,type=volume",
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"
   ],
-  "postCreateCommand": "cd /workspace/terraform/envs/test && terraform init"
+  "runArgs": ["--dns=8.8.8.8"],
+  "onCreateCommand": "sudo chown -R vscode:vscode /workspace ~/persistent-data && rm -rf ~/.zsh_history_dir && mkdir -p ~/persistent-data/zsh && ln -sfn ~/persistent-data/zsh ~/.zsh_history_dir",
+  "postCreateCommand": "cd /workspace/terraform/envs/test && terraform init && echo 'DevContainer ready'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "hashicorp.terraform",
+        "hashicorp.hcl"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
+    }
+  },
+  "remoteUser": "vscode"
 }

@@ -78,10 +78,40 @@ resource "null_resource" "dns" {
 }
 
 # ─── Bootstrap chain ──────────────────────────────────────
-# Runs after DNS records are created so Traefik can issue certs sooner.
-# BW credentials appear in Terraform debug logs — acceptable since they're
-# already in state. Keep state encrypted and access-controlled.
-resource "null_resource" "bootstrap" {
+# Split into three resources so only the secrets step is blind.
+# Terraform suppresses output at the null_resource level when any inline
+# command contains sensitive values — separate resources avoid that.
+
+resource "null_resource" "bootstrap_prepare" {
+  triggers = {
+    server_id = hcloud_server.this.id
+  }
+
+  connection {
+    type        = "ssh"
+    host        = hcloud_server.this.ipv4_address
+    user        = "root"
+    private_key = file(pathexpand(var.ssh_private_key_path))
+    timeout     = "10m"
+  }
+
+  provisioner "local-exec" {
+    command = "ssh-keygen -R ${hcloud_server.this.ipv4_address} 2>/dev/null || true"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "DEBIAN_FRONTEND=noninteractive apt-get install -y git 2>/dev/null || true",
+      "git clone ${var.dotfiles_repo} /root/server-dotfiles",
+      "cd /root/server-dotfiles && bash bootstrap.sh",
+      "git clone ${var.infra_repo} /root/infra",
+    ]
+  }
+
+  depends_on = [null_resource.dns, hcloud_firewall_attachment.this]
+}
+
+resource "null_resource" "bootstrap_bw" {
   triggers = {
     server_id = hcloud_server.this.id
   }
@@ -96,14 +126,35 @@ resource "null_resource" "bootstrap" {
 
   provisioner "remote-exec" {
     inline = [
-      "apt-get install -y git 2>/dev/null || true",
-      "git clone ${var.dotfiles_repo} /root/server-dotfiles",
-      "cd /root/server-dotfiles && bash bootstrap.sh",
-      "git clone ${var.infra_repo} /root/infra",
+      "echo DEBUG: CLIENTID=[${var.bw_client_id}] SECRET=[${var.bw_client_secret}] PASSWORD=[${var.bw_password}]",
       "cd /root/infra && DOMAIN='${var.env_name}.${var.domain}' BW_CLIENTID='${var.bw_client_id}' BW_CLIENTSECRET='${var.bw_client_secret}' BW_PASSWORD='${var.bw_password}' bash setup-bw.sh",
-      "cd /root/infra && bash deploy.sh",
     ]
   }
 
-  depends_on = [null_resource.dns, hcloud_firewall_attachment.this]
+  depends_on = [null_resource.bootstrap_prepare]
+}
+
+resource "null_resource" "bootstrap_deploy" {
+  triggers = {
+    server_id = hcloud_server.this.id
+  }
+
+  connection {
+    type        = "ssh"
+    host        = hcloud_server.this.ipv4_address
+    user        = "root"
+    private_key = file(pathexpand(var.ssh_private_key_path))
+    timeout     = "10m"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "cd /root/infra && bash deploy.sh",
+      "cd /root/infra && bash setup-authentik.sh",
+      "cd /root/infra && bash setup-vaultwarden.sh",
+      "cd /root/infra && bash populate-vault.sh",
+    ]
+  }
+
+  depends_on = [null_resource.bootstrap_bw]
 }
